@@ -10,7 +10,9 @@ import { Link } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   BookOpenText,
+  Check,
   ChevronDown,
+  CircleAlert,
   Filter,
   ListFilter,
   Mail,
@@ -26,6 +28,11 @@ import type {
   VoteRecord,
   VoteStatusKind,
 } from '#/data/types.ts'
+import {
+  emailAddressesFromValue,
+  firstXUrlFromValue,
+  xHandlesFromValue,
+} from '#/data/contacts.ts'
 import { filterMeps } from '#/data/filter.ts'
 import { CountryPicker, GroupPicker } from '#/components/filter-pickers.tsx'
 import { GroupMark } from '#/components/group-mark.tsx'
@@ -95,6 +102,11 @@ export function VoteMatrix({ dataset }: { dataset: ChatControlDataset }) {
       votes: voteFilters,
     })
   }, [country, dataset.meps, groupId, query, voteFilters])
+
+  const filteredContacts = useMemo(
+    () => contactsForMeps(filteredMeps),
+    [filteredMeps],
+  )
 
   const activeFilterCount =
     Number(Boolean(query)) +
@@ -202,12 +214,28 @@ export function VoteMatrix({ dataset }: { dataset: ChatControlDataset }) {
               <thead>
                 <tr>
                   <th scope="col" className="mep-column">
-                    <span className="block text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                      Member
-                    </span>
-                    <span className="mt-1 block text-sm font-semibold text-foreground">
-                      MEP
-                    </span>
+                    <div className="relative h-full">
+                      <div>
+                        <span className="block text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                          Member
+                        </span>
+                        <span className="mt-1 block text-sm font-semibold text-foreground">
+                          MEP
+                        </span>
+                      </div>
+                      <div className="absolute right-0 bottom-0 flex items-center gap-1">
+                        <CopyContactsButton
+                          kind="x"
+                          values={filteredContacts.x.values}
+                          personCount={filteredContacts.x.personCount}
+                        />
+                        <CopyContactsButton
+                          kind="email"
+                          values={filteredContacts.email.values}
+                          personCount={filteredContacts.email.personCount}
+                        />
+                      </div>
+                    </div>
                   </th>
                   {dataset.votes.map((vote) => (
                     <th scope="col" key={vote.id} className="vote-column">
@@ -283,6 +311,118 @@ export function VoteMatrix({ dataset }: { dataset: ChatControlDataset }) {
   )
 }
 
+type ContactCopyKind = 'x' | 'email'
+type ContactCopyStatus = 'idle' | 'copied' | 'error'
+
+function CopyContactsButton({
+  kind,
+  values,
+  personCount,
+}: {
+  kind: ContactCopyKind
+  values: string[]
+  personCount: number
+}) {
+  const valuesSignature = values.join('\n')
+  const [feedback, setFeedback] = useState<{
+    status: ContactCopyStatus
+    valuesSignature: string
+  }>({ status: 'idle', valuesSignature: '' })
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const status =
+    feedback.valuesSignature === valuesSignature ? feedback.status : 'idle'
+  const contactLabel = kind === 'x' ? 'X handle' : 'email address'
+  const contactPlural = kind === 'x' ? 'X handles' : 'email addresses'
+  const countedContactLabel = values.length === 1 ? contactLabel : contactPlural
+  const copyLabel = `Copy ${values.length} ${countedContactLabel} for ${personCount} filtered MEP${personCount === 1 ? '' : 's'}`
+  const feedbackLabel =
+    status === 'copied'
+      ? `Copied ${values.length} ${countedContactLabel}`
+      : status === 'error'
+        ? `Could not copy ${contactPlural}`
+        : copyLabel
+
+  useEffect(
+    () => () => {
+      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
+    },
+    [],
+  )
+
+  const copyContacts = async () => {
+    try {
+      await navigator.clipboard.writeText(values.join('\n'))
+      setFeedback({ status: 'copied', valuesSignature })
+    } catch {
+      setFeedback({ status: 'error', valuesSignature })
+    }
+
+    if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
+    resetTimeoutRef.current = setTimeout(
+      () => setFeedback({ status: 'idle', valuesSignature }),
+      1800,
+    )
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      disabled={personCount === 0}
+      onClick={copyContacts}
+      aria-label={feedbackLabel}
+      title={feedbackLabel}
+      data-contact-kind={kind}
+      data-copy-status={status}
+      className={`h-6 min-w-0 gap-1 rounded-full px-2 text-[10px] font-bold tabular-nums [&_svg]:size-3 ${
+        status === 'copied'
+          ? 'border border-emerald-700/20 bg-emerald-700/10 text-emerald-800 hover:bg-emerald-700/15 hover:text-emerald-800'
+          : status === 'error'
+            ? 'border border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive'
+            : 'border border-border/80 bg-background/65 text-muted-foreground hover:border-border hover:bg-background hover:text-foreground'
+      }`}
+    >
+      {status === 'copied' ? (
+        <Check aria-hidden="true" />
+      ) : status === 'error' ? (
+        <CircleAlert aria-hidden="true" />
+      ) : kind === 'x' ? (
+        <XIcon />
+      ) : (
+        <Mail aria-hidden="true" />
+      )}
+      <span aria-hidden="true">{personCount}</span>
+    </Button>
+  )
+}
+
+function contactsForMeps(meps: MepRecord[]) {
+  const xValues: string[] = []
+  const emailValues: string[] = []
+  let xPersonCount = 0
+  let emailPersonCount = 0
+
+  for (const mep of meps) {
+    const xHandles = xHandlesFromValue(mep.twitterUrl)
+    if (xHandles.length) {
+      xPersonCount += 1
+      xValues.push(...xHandles)
+    }
+
+    const addresses = emailAddressesFromValue(mep.email)
+    if (addresses.length) {
+      emailPersonCount += 1
+      emailValues.push(...addresses)
+    }
+  }
+
+  return {
+    x: { values: xValues, personCount: xPersonCount },
+    email: { values: emailValues, personCount: emailPersonCount },
+  }
+}
+
 function VirtualizedTableBody({
   meps,
   votes,
@@ -317,6 +457,7 @@ function VirtualizedTableBody({
       {virtualRows.map((virtualRow) => {
         const mep = meps[virtualRow.index]
         const group = groupById.get(mep.currentGroupId)
+        const twitterUrl = firstXUrlFromValue(mep.twitterUrl)
 
         return (
           <tr
@@ -349,9 +490,9 @@ function VirtualizedTableBody({
                       {!mep.isCurrentMep ? <span className="shrink-0">· Former MEP</span> : null}
                     </span>
                     <span className="ml-auto flex shrink-0 items-center gap-1">
-                      {mep.twitterUrl ? (
+                      {twitterUrl ? (
                         <ContactIconLink
-                          href={mep.twitterUrl}
+                          href={twitterUrl}
                           label={`Open ${mep.name} on X`}
                           external
                         >

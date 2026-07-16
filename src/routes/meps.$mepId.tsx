@@ -9,6 +9,10 @@ import {
 } from 'lucide-react'
 
 import dataset from 'virtual:chat-control-data'
+import {
+  firstXUrlFromValue,
+  xHandleFromUrl,
+} from '#/data/contacts.ts'
 import { GroupMark } from '#/components/group-mark.tsx'
 import {
   AttendanceCoverageNote,
@@ -41,6 +45,7 @@ export const Route = createFileRoute('/meps/$mepId')({
 function MepDetailPage() {
   const mep = Route.useLoaderData()
   const group = dataset.groups.find((candidate) => candidate.id === mep.currentGroupId)
+  const twitterUrl = firstXUrlFromValue(mep.twitterUrl)
 
   return (
     <main className="min-h-[calc(100vh-8rem)]">
@@ -88,12 +93,12 @@ function MepDetailPage() {
               ) : (
                 <UnavailableContact icon={Mail} label="Email not publicly listed" />
               )}
-              {mep.twitterUrl ? (
+              {twitterUrl ? (
                 <ContactLink
-                  href={mep.twitterUrl}
+                  href={twitterUrl}
                   icon={ExternalLink}
                   label="X / Twitter"
-                  value={twitterLabel(mep.twitterUrl)}
+                  value={xHandleFromUrl(twitterUrl) ?? 'Open profile'}
                   external
                 />
               ) : (
@@ -282,13 +287,4 @@ function UnavailableContact({ icon: Icon, label }: { icon: typeof Mail; label: s
       <span className="text-xs leading-relaxed">{label}</span>
     </div>
   )
-}
-
-function twitterLabel(url: string) {
-  try {
-    const pathname = new URL(url).pathname.split('/').filter(Boolean)[0]
-    return pathname ? `@${pathname}` : 'Open profile'
-  } catch {
-    return 'Open profile'
-  }
 }

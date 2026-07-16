@@ -7,6 +7,12 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 import type { ChatControlDataset, VoteRecord } from '#/data/types.ts'
+import {
+  emailAddressesFromValue,
+  firstXUrlFromValue,
+  xHandleFromUrl,
+  xHandlesFromValue,
+} from '#/data/contacts.ts'
 import { VoteFilterButton, VoteMatrix } from '#/components/vote-matrix.tsx'
 import { TooltipProvider } from '#/components/ui/tooltip.tsx'
 
@@ -75,7 +81,7 @@ describe('VoteMatrix', () => {
           currentGroupId: 'epp',
           isCurrentMep: true,
           email: 'test.mep@europarl.europa.eu',
-          twitterUrl: 'https://x.com/testmep',
+          twitterUrl: 'https://x.com/testmep; https://x.com/secondtestmep',
           profileUrl: null,
           profileLabel: 'European Parliament profile',
           votes: { [vote.id]: { kind: 'support', raw: 'FOR' } },
@@ -89,7 +95,14 @@ describe('VoteMatrix', () => {
       </TooltipProvider>,
     )
     const bodyMarkup = markup.slice(markup.indexOf('<tbody'))
+    const headerMarkup = markup.slice(0, markup.indexOf('<tbody'))
 
+    expect(headerMarkup).toContain(
+      'aria-label="Copy 2 X handles for 1 filtered MEP"',
+    )
+    expect(headerMarkup).toContain(
+      'aria-label="Copy 1 email address for 1 filtered MEP"',
+    )
     expect(bodyMarkup).toContain('<td class="vote-column">')
     expect(bodyMarkup).toContain('aria-label="Open Test MEP on X"')
     expect(bodyMarkup).toContain('href="https://x.com/testmep"')
@@ -104,5 +117,48 @@ describe('VoteMatrix', () => {
     expect(bodyMarkup.indexOf('Open Test MEP on X')).toBeLessThan(
       bodyMarkup.indexOf('Email Test MEP'),
     )
+  })
+})
+
+describe('contact copy values', () => {
+  it('extracts X handles from profile, status, and login redirect URLs', () => {
+    expect(xHandleFromUrl('https://x.com/testmep')).toBe('@testmep')
+    expect(xHandleFromUrl('https://twitter.com/testmep/status/123')).toBe(
+      '@testmep',
+    )
+    expect(
+      xHandleFromUrl(
+        'https://x.com/i/flow/login?redirect_after_login=%2Fredirectedmep',
+      ),
+    ).toBe('@redirectedmep')
+  })
+
+  it('extracts and deduplicates handles from compound X values', () => {
+    const value =
+      'https://x.com/herranzgarcia1; https://x.com/EstherHerranz8'
+
+    expect(xHandlesFromValue(value)).toEqual([
+      '@herranzgarcia1',
+      '@EstherHerranz8',
+    ])
+    expect(firstXUrlFromValue(value)).toBe(
+      'https://x.com/herranzgarcia1',
+    )
+    expect(
+      xHandlesFromValue(
+        'https://www.twitter.com/ALMA_EZCURRA/; https://x.com/alma_ezcurra',
+      ),
+    ).toEqual(['@ALMA_EZCURRA'])
+  })
+
+  it('copies every listed email while allowing the badge to count the MEP once', () => {
+    expect(
+      emailAddressesFromValue(
+        'first@europarl.europa.eu; mailto:second@europarl.europa.eu',
+      ),
+    ).toEqual([
+      'first@europarl.europa.eu',
+      'second@europarl.europa.eu',
+    ])
   })
 })
