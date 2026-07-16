@@ -72,7 +72,7 @@ jobs:
           DOKPLOY_URL="${DOKPLOY_URL%/}"
           curl --fail-with-body --retry 3 \
             --request POST \
-            --url "$DOKPLOY_URL/api/application.deploy" \
+            --url "$DOKPLOY_URL/api/application/deploy" \
             --header "accept: application/json" \
             --header "content-type: application/json" \
             --header "x-api-key: $DOKPLOY_TOKEN" \
