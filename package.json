@@ -1,6 +1,7 @@
 {
   "name": "chat-control-vote-record",
   "private": true,
+  "packageManager": "pnpm@9.0.6",
   "type": "module",
   "imports": {
     "#/*": "./src/*"
