@@ -10,6 +10,11 @@ import { ShieldCheck } from 'lucide-react'
 import { TooltipProvider } from '#/components/ui/tooltip.tsx'
 import appCss from '../styles.css?url'
 
+const siteTitle = 'Chat Control Vote Record'
+const siteDescription =
+  'A source-grounded record of European Parliament votes concerning EU Chat Control proposals.'
+const socialImage = '/ogimage.png'
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -19,13 +24,27 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Chat Control Vote Record',
+        title: siteTitle,
       },
       {
         name: 'description',
-        content:
-          'A source-grounded record of European Parliament votes concerning EU Chat Control proposals.',
+        content: siteDescription,
       },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:title', content: siteTitle },
+      { property: 'og:description', content: siteDescription },
+      { property: 'og:image', content: socialImage },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
+      {
+        property: 'og:image:alt',
+        content:
+          'Chat Control: Who voted, and who was absent, illustrated by a fictional MEP in beach clothes voting in Parliament.',
+      },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: siteTitle },
+      { name: 'twitter:description', content: siteDescription },
+      { name: 'twitter:image', content: socialImage },
       { name: 'theme-color', content: '#f7f5f0' },
     ],
     links: [
