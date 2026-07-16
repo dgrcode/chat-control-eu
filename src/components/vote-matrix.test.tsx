@@ -74,8 +74,8 @@ describe('VoteMatrix', () => {
           currentGroup: 'EPP',
           currentGroupId: 'epp',
           isCurrentMep: true,
-          email: null,
-          twitterUrl: null,
+          email: 'test.mep@europarl.europa.eu',
+          twitterUrl: 'https://x.com/testmep',
           profileUrl: null,
           profileLabel: 'European Parliament profile',
           votes: { [vote.id]: { kind: 'support', raw: 'FOR' } },
@@ -91,5 +91,18 @@ describe('VoteMatrix', () => {
     const bodyMarkup = markup.slice(markup.indexOf('<tbody'))
 
     expect(bodyMarkup).toContain('<td class="vote-column">')
+    expect(bodyMarkup).toContain('aria-label="Open Test MEP on X"')
+    expect(bodyMarkup).toContain('href="https://x.com/testmep"')
+    expect(bodyMarkup).toContain('target="_blank"')
+    expect(bodyMarkup).toContain('aria-label="Email Test MEP"')
+    expect(bodyMarkup).toContain(
+      'href="mailto:test.mep@europarl.europa.eu"',
+    )
+    expect(bodyMarkup).toMatch(
+      /href="mailto:test\.mep@europarl\.europa\.eu"[^>]*target="_blank"/,
+    )
+    expect(bodyMarkup.indexOf('Open Test MEP on X')).toBeLessThan(
+      bodyMarkup.indexOf('Email Test MEP'),
+    )
   })
 })

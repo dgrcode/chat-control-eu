@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
 } from 'react'
 import { Link } from '@tanstack/react-router'
@@ -12,6 +13,7 @@ import {
   ChevronDown,
   Filter,
   ListFilter,
+  Mail,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -330,23 +332,45 @@ function VirtualizedTableBody({
             }}
           >
             <th scope="row" className="mep-column mep-cell">
-              <Link
-                to="/meps/$mepId"
-                params={{ mepId: mep.slug }}
-                className="group flex items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              >
+              <div className="flex items-center gap-3">
                 {group ? <GroupMark group={group} /> : null}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-foreground transition-colors group-hover:text-signal">
+                  <Link
+                    to="/meps/$mepId"
+                    params={{ mepId: mep.slug }}
+                    className="group block truncate rounded-sm text-sm font-semibold text-foreground outline-none transition-colors hover:text-signal focus-visible:ring-2 focus-visible:ring-ring/40"
+                  >
                     {mep.name}
-                  </span>
-                  <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-normal text-muted-foreground">
-                    <span aria-hidden="true">{mep.countryFlag}</span>
-                    <span className="truncate">{mep.country}</span>
-                    {!mep.isCurrentMep ? <span>· Former MEP</span> : null}
+                  </Link>
+                  <span className="mt-0.5 flex min-w-0 items-center justify-between gap-2 text-[11px] font-normal text-muted-foreground">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span aria-hidden="true">{mep.countryFlag}</span>
+                      <span className="truncate">{mep.country}</span>
+                      {!mep.isCurrentMep ? <span className="shrink-0">· Former MEP</span> : null}
+                    </span>
+                    <span className="ml-auto flex shrink-0 items-center gap-1">
+                      {mep.twitterUrl ? (
+                        <ContactIconLink
+                          href={mep.twitterUrl}
+                          label={`Open ${mep.name} on X`}
+                          external
+                        >
+                          <XIcon />
+                        </ContactIconLink>
+                      ) : null}
+                      {mep.email ? (
+                        <ContactIconLink
+                          href={`mailto:${mep.email}`}
+                          label={`Email ${mep.name}`}
+                          external
+                        >
+                          <Mail aria-hidden="true" />
+                        </ContactIconLink>
+                      ) : null}
+                    </span>
                   </span>
                 </span>
-              </Link>
+              </div>
             </th>
             {votes.map((vote) => (
               <td key={vote.id} className="vote-column">
@@ -361,6 +385,39 @@ function VirtualizedTableBody({
         )
       })}
     </tbody>
+  )
+}
+
+function ContactIconLink({
+  href,
+  label,
+  external = false,
+  children,
+}: {
+  href: string
+  label: string
+  external?: boolean
+  children: ReactNode
+}) {
+  return (
+    <a
+      href={href}
+      aria-label={label}
+      title={label}
+      target={external ? '_blank' : undefined}
+      rel={external ? 'noreferrer' : undefined}
+      className="grid size-5 place-items-center rounded text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 [&>svg]:size-3.5"
+    >
+      {children}
+    </a>
+  )
+}
+
+function XIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.39l-5.04-6.59-5.77 6.59H2.27l7.632-8.72L1.425 2.25h6.6l4.554 6.02 5.665-6.02Zm-1.161 17.52h1.833L7.03 4.126H5.064L17.083 19.77Z" />
+    </svg>
   )
 }
 
