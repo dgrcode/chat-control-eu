@@ -2,11 +2,76 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ArrowDownRight, DatabaseZap, Flag, UsersRound } from 'lucide-react'
 
 import dataset from 'virtual:chat-control-data'
-import { VoteMatrix } from '#/components/vote-matrix.tsx'
+import {
+  VoteMatrix,
+  type FilterNavigationOptions,
+} from '#/components/vote-matrix.tsx'
+import {
+  parseVoteFilters,
+  serializeVoteFilters,
+  type MepFilters,
+} from '#/data/filter.ts'
 
-export const Route = createFileRoute('/')({ component: HomePage })
+interface HomeSearch {
+  q?: string
+  country?: string
+  group?: string
+  votes?: string
+}
+
+const countryNames = new Set(dataset.countries.map((country) => country.name))
+const groupIds = new Set(dataset.groups.map((group) => group.id))
+const voteIds = new Set(dataset.votes.map((vote) => vote.id))
+
+function optionalString(value: unknown) {
+  return typeof value === 'string' && value ? value : undefined
+}
+
+export const Route = createFileRoute('/')({
+  validateSearch: (search): HomeSearch => {
+    const q = optionalString(search.q)
+    const country = optionalString(search.country)
+    const group = optionalString(search.group)
+    const votes = serializeVoteFilters(parseVoteFilters(search.votes, voteIds))
+
+    return {
+      q,
+      country: country && countryNames.has(country) ? country : undefined,
+      group: group && groupIds.has(group) ? group : undefined,
+      votes: votes || undefined,
+    }
+  },
+  component: HomePage,
+})
 
 function HomePage() {
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const filters: MepFilters = {
+    query: search.q,
+    country: search.country,
+    groupId: search.group,
+    votes: parseVoteFilters(search.votes, voteIds),
+  }
+
+  const setFilters = (
+    nextFilters: MepFilters,
+    options?: FilterNavigationOptions,
+  ) => {
+    const votes = serializeVoteFilters(nextFilters.votes)
+
+    void navigate({
+      search: {
+        q: nextFilters.query || undefined,
+        country: nextFilters.country || undefined,
+        group: nextFilters.groupId || undefined,
+        votes: votes || undefined,
+      },
+      replace: options?.replace ?? false,
+      resetScroll: false,
+    })
+  }
+
   return (
     <main>
       <section className="hero-section">
@@ -61,7 +126,11 @@ function HomePage() {
           </dl>
         </div>
       </section>
-      <VoteMatrix dataset={dataset} />
+      <VoteMatrix
+        dataset={dataset}
+        filters={filters}
+        onFiltersChange={setFilters}
+      />
     </main>
   )
 }

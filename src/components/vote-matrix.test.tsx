@@ -91,7 +91,11 @@ describe('VoteMatrix', () => {
 
     const markup = renderToStaticMarkup(
       <TooltipProvider>
-        <VoteMatrix dataset={dataset} />
+        <VoteMatrix
+          dataset={dataset}
+          filters={{}}
+          onFiltersChange={() => undefined}
+        />
       </TooltipProvider>,
     )
     const bodyMarkup = markup.slice(markup.indexOf('<tbody'))

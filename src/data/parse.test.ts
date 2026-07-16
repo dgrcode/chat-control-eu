@@ -3,7 +3,11 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { classifyVoteStatus, parseChatControlData } from './parse.ts'
-import { filterMeps } from './filter.ts'
+import {
+  filterMeps,
+  parseVoteFilters,
+  serializeVoteFilters,
+} from './filter.ts'
 
 const mepMarkdown = readFileSync(
   fileURLToPath(
@@ -84,5 +88,25 @@ describe('chat control data parser', () => {
           mep.votes['2026-03-26-commission-proposal'].kind === 'oppose',
       ),
     ).toBe(true)
+  })
+
+  it('round-trips shareable vote filters and ignores stale URL values', () => {
+    const allowedVoteIds = new Set(dataset.votes.map((vote) => vote.id))
+    const value = [
+      '2026-03-26-commission-proposal:oppose,support,oppose',
+      'missing-vote:oppose',
+      '2026-07-09-amended-rejection:not-recorded-present,invalid-status',
+    ].join(';')
+
+    const filters = parseVoteFilters(value, allowedVoteIds)
+
+    expect(filters).toEqual({
+      '2026-03-26-commission-proposal': ['oppose', 'support'],
+      '2026-07-09-amended-rejection': ['not-recorded-present'],
+    })
+    expect(serializeVoteFilters(filters)).toBe(
+      '2026-03-26-commission-proposal:support,oppose;' +
+        '2026-07-09-amended-rejection:not-recorded-present',
+    )
   })
 })

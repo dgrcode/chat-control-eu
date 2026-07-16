@@ -33,7 +33,11 @@ import {
   firstXUrlFromValue,
   xHandlesFromValue,
 } from '#/data/contacts.ts'
-import { filterMeps } from '#/data/filter.ts'
+import {
+  filterMeps,
+  type MepFilters,
+  type VoteFilters,
+} from '#/data/filter.ts'
 import { CountryPicker, GroupPicker } from '#/components/filter-pickers.tsx'
 import { GroupMark } from '#/components/group-mark.tsx'
 import {
@@ -54,19 +58,37 @@ import {
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu.tsx'
 
-type VoteFilters = Partial<Record<string, VoteStatusKind[]>>
 const virtualRowHeight = 66.4
 const initialVirtualizerRect = { width: 1280, height: 640 }
 
-export function VoteMatrix({ dataset }: { dataset: ChatControlDataset }) {
-  const [query, setQuery] = useState('')
-  const [country, setCountry] = useState('')
-  const [groupId, setGroupId] = useState('')
-  const [voteFilters, setVoteFilters] = useState<VoteFilters>({})
+export interface FilterNavigationOptions {
+  replace?: boolean
+}
+
+export function VoteMatrix({
+  dataset,
+  filters,
+  onFiltersChange,
+}: {
+  dataset: ChatControlDataset
+  filters: MepFilters
+  onFiltersChange: (
+    filters: MepFilters,
+    options?: FilterNavigationOptions,
+  ) => void
+}) {
+  const query = filters.query ?? ''
+  const country = filters.country ?? ''
+  const groupId = filters.groupId ?? ''
+  const voteFilters = filters.votes ?? {}
   const [hydrated, setHydrated] = useState(false)
   const tableScrollRef = useRef<HTMLDivElement>(null)
+  const queryHistoryEntryRef = useRef(Boolean(query))
 
   useEffect(() => setHydrated(true), [])
+  useEffect(() => {
+    queryHistoryEntryRef.current = Boolean(query)
+  }, [query])
 
   const groupById = useMemo(
     () => new Map(dataset.groups.map((group) => [group.id, group])),
@@ -119,17 +141,21 @@ export function VoteMatrix({ dataset }: { dataset: ChatControlDataset }) {
   }, [filteredMeps])
 
   const resetFilters = () => {
-    setQuery('')
-    setCountry('')
-    setGroupId('')
-    setVoteFilters({})
+    onFiltersChange({})
   }
 
   const setVoteStatusFilter = (
     voteId: string,
     values: VoteStatusKind[],
   ) => {
-    setVoteFilters((current) => ({ ...current, [voteId]: values }))
+    const votes: VoteFilters = { ...voteFilters }
+    if (values.length) votes[voteId] = values
+    else delete votes[voteId]
+
+    onFiltersChange({
+      ...filters,
+      votes: Object.keys(votes).length ? votes : undefined,
+    })
   }
 
   return (
@@ -169,7 +195,18 @@ export function VoteMatrix({ dataset }: { dataset: ChatControlDataset }) {
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  const nextQuery = event.target.value
+                  const replace = queryHistoryEntryRef.current
+                  queryHistoryEntryRef.current = Boolean(nextQuery)
+                  onFiltersChange(
+                    {
+                      ...filters,
+                      query: nextQuery || undefined,
+                    },
+                    { replace },
+                  )
+                }}
                 placeholder="Search an MEP or national party…"
                 aria-label="Search MEP name or national party"
                 className="h-10 bg-card pl-9"
@@ -178,12 +215,22 @@ export function VoteMatrix({ dataset }: { dataset: ChatControlDataset }) {
             <CountryPicker
               countries={dataset.countries}
               value={country}
-              onChange={setCountry}
+              onChange={(nextCountry) =>
+                onFiltersChange({
+                  ...filters,
+                  country: nextCountry || undefined,
+                })
+              }
             />
             <GroupPicker
               groups={dataset.groups}
               value={groupId}
-              onChange={setGroupId}
+              onChange={(nextGroupId) =>
+                onFiltersChange({
+                  ...filters,
+                  groupId: nextGroupId || undefined,
+                })
+              }
             />
             {activeFilterCount > 0 ? (
               <Button
